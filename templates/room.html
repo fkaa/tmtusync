@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}{{ name }} - tmtusync{% endblock %}
+
+{% block head %}
+    <link href="/static/style.css" rel="stylesheet">
+    <link href="/static/fontawesome.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+<div class="test">
+
+<div class="video-wrapper">
+    <video id="video-player" class="video">
+        Not supported!
+    </video>
+
+    <div class="video-header">
+        <span id="room-name" class="video-title"></span>
+    </div>
+
+    <div id="video-controls" class="controls" data-state="hidden">
+        <!-- Play/Pause button -->
+        <button id="playpause" type="button" data-state="pause">
+            <i class="fas fa-play fa-3x play-icon"></i>
+            <i class="fas fa-pause fa-3x pause-icon"></i>
+        </button>
+
+        <!-- Progress bar -->
+        <div id="progress" class="progress">
+            <span id="progress-bar" class="progress-content"></span>
+        </div>
+
+        <!-- Settings button -->
+        <button id="settings" type="button">
+            <i class="fas fa-cog fa-3x"></i>
+        </button>
+
+        <!-- Mute volume button -->
+        <button id="mute" type="button" data-state="mute">
+            <i class="fas fa-volume-up fa-3x volume-icon"></i>
+            <i class="fas fa-volume-mute fa-3x mute-icon"></i>
+        </button>
+
+        <!-- Volume slider -->
+        <div id="volume-container" class="progress">
+            <span id="volume-slider" class="progress-content"></span>
+        </div>
+
+        <!-- Expand button -->
+        <button id="expand" type="button" data-state="window">
+            <i class="fas fa-expand-arrows-alt fa-3x fullscreen-icon"></i>
+            <i class="fas fa-compress-arrows-alt fa-3x window-icon"></i>
+        </button>
+
+    </div>
+</div>
+
+<div id="video-fold" class="fold">
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Time</th>
+            <th>Buffered</th>
+            <th>State</th>
+        </tr>
+
+        <tr>
+            <td>Bob</td>
+            <td>14:34</td>
+            <td>2:23</td>
+            <td>Playing</td>
+        </tr>
+    </table>
+</div>
+
+</div>
+
+<script src="../static/hls.js"></script>
+<script src="../static/app.js"></script>
+
+{% endblock %}
+

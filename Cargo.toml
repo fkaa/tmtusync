@@ -1,0 +1,36 @@
+[package]
+name = "tmtusync"
+version = "0.1.0"
+authors = ["Felix Kaaman <tmtu@tmtu.ee>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+futures = "*"
+futures-util = "*"
+async-channel = "*"
+async-trait = "*"
+
+askama = "0.10"
+askama_actix = "0.11"
+
+env_logger = "*"
+thiserror = "*"
+stop-token = { git = "https://github.com/soruh/stop-token" }
+anyhow = "*"
+chrono = "*"
+hex-slice = "*"
+#bytes = "1.0"
+log = "*"
+byteorder = "*"
+serde = "*"
+serde_json = "*"
+
+actix-web-actors = "*"
+actix-web = "3"
+actix-files = "*"
+actix = "*"
+actix-rt = "1.1"
+
