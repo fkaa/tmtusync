@@ -108,6 +108,14 @@ pub struct ParticipantInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ParticipantUpdate {
+    pub user_id: UserId,
+    pub duration: f32,
+    pub buffered: f32,
+    pub state: PlayState,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NewParticipant {
     user_id: UserId,
     name: String,
@@ -134,6 +142,7 @@ pub struct StreamInfo {
     pub slug: String,
     pub name: String,
     pub streams: Vec<Stream>,
+    pub duration: f32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -142,6 +151,10 @@ pub enum ToSessionMessage {
     RoomState {
         participants: Vec<ParticipantInfo>,
         current_stream: Option<StreamInfo>,
+    },
+
+    RoomUpdate {
+        participants: Vec<ParticipantUpdate>,
     },
 
     NewParticipant {
@@ -193,7 +206,11 @@ pub struct SessionHello {
 pub enum FromSessionMessage {
     Hello { name: String },
     Goodbye,
-    State(SessionState),
+    State {
+        duration: f32,
+        buffered: f32,
+        state: PlayState,
+    },
     Buffering(Duration),
     Seek {
         duration: f32,

@@ -115,6 +115,8 @@ html, body {
 }
 
 .fold {
+    background: #3a3a3a;
+    color: #fff;
 }
 
 .test {
@@ -123,8 +125,21 @@ html, body {
     height: 100%;
 }
 
-th, td {
-    border: 1px solid #000;
+tr {
+    background: #444;
+}
+
+tr:nth-child(even) {
+    background: #555;
+}
+
+td, th {
+    padding: 2px 6px;
+}
+
+#userlist {
+    border-collapse: collapse;
+    font-family: sans-serif;
 }
 
 .fold[data-state="fullscreen"] {display:none;}

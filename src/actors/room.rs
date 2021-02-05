@@ -1,17 +1,17 @@
 use actix::{Actor, Addr, AsyncContext, Context, Handler, Message, StreamHandler};
 
-use crate::actors::{PlayingState, UserId, WebsocketTransport, StreamInfo, ToSessionMessage, ParticipantInfo, FromSessionMessage, ClientMessage, PlayState};
+use crate::actors::{PlayingState, UserId, WebsocketTransport, StreamInfo, ToSessionMessage, ParticipantInfo, FromSessionMessage, ClientMessage, PlayState, ParticipantUpdate};
 
 use log::*;
 
 use std::time::{Duration, Instant};
 
-#[derive(Default)]
 pub struct Room {
     name: String,
     participants: Vec<Participant>,
     free_user_id: u32,
-    current_stream: Option<StreamInfo>
+    current_stream: Option<StreamInfo>,
+    room_state: PlayState,
 }
 
 impl Room {
@@ -21,6 +21,15 @@ impl Room {
             participants: Vec::new(),
             free_user_id: 0,
             current_stream: stream,
+            room_state: PlayState::Pause,
+        }
+    }
+
+    fn set_stream_position(&mut self, duration: f32) {
+        if let Some(stream) = &mut self.current_stream {
+            stream.duration = duration;
+        } else {
+            warn!("Tried to set stream position on non-existing stream");
         }
     }
 
@@ -46,6 +55,8 @@ impl Room {
     }
 
     fn announce_seek(&mut self, src: UserId, duration: f32) {
+        self.set_stream_position(duration);
+
         let message = ToSessionMessage::DoSeek {
             duration,
         };
@@ -67,6 +78,29 @@ impl Room {
                 participant.send_message(message.clone());
             }
         }
+    }
+
+    fn announce_participant_updates(&mut self, updates: Vec<ParticipantUpdate>) {
+        let message = ToSessionMessage::RoomUpdate {
+            participants: updates,
+        };
+
+        for participant in &self.participants {
+            participant.send_message(message.clone());
+        }
+    }
+
+    fn update_participant_state(&mut self, user_id: UserId, duration: f32, buffered: f32, state: PlayState) {
+        if let Some(participant) = self.participants.iter_mut().find(|p| p.user_id == user_id) {
+
+            participant.duration = duration;
+            participant.buffered = buffered;
+            participant.state = state;
+        } else {
+            warn!("Tried to update non-existant participant!");
+        }
+
+        self.announce_participant_updates(self.get_room_updates());
     }
 
     fn add_participant(
@@ -102,6 +136,15 @@ impl Room {
         }
 
         self.announce_participant_left(user_id);
+    }
+
+    fn get_room_updates(&self) -> Vec<ParticipantUpdate> {
+        self.participants.iter().map(|p| ParticipantUpdate {
+            user_id: p.user_id,
+            duration: p.duration,
+            buffered: p.buffered,
+            state: p.state,
+        }).collect::<Vec<_>>()
     }
 
     fn get_room_state(&self) -> ToSessionMessage {
@@ -164,6 +207,9 @@ impl Handler<ClientMessage> for Room {
             FromSessionMessage::SetState { state } => {
                 self.announce_state(msg.from, state);
             }
+            FromSessionMessage::State { duration, buffered, state } => {
+                self.update_participant_state(msg.from, duration, buffered, state);
+            }
             _ => {}
         }
 
@@ -198,7 +244,9 @@ pub struct TimingInfo {
 pub struct Participant {
     user_id: UserId,
     name: String,
-    state: PlayingState,
+    state: PlayState,
+    duration: f32,
+    buffered: f32,
     time: Option<TimingInfo>,
     transport: Addr<WebsocketTransport>,
 }
@@ -209,7 +257,9 @@ impl Participant {
             user_id,
             name,
             transport,
-            state: PlayingState::Playing,
+            duration: 0f32,
+            buffered: 0f32,
+            state: PlayState::Pause,
             time: None,
         }
     }

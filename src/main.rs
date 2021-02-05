@@ -104,7 +104,8 @@ async fn start() -> std::io::Result<()> {
             Stream { quality: 0, playlist: String::from("stream_0/stream_0.m3u8") },
             Stream { quality: 1, playlist: String::from("stream_1/stream_1.m3u8") },
             Stream { quality: 2, playlist: String::from("stream_2/stream_2.m3u8") },
-        ]
+        ],
+        duration: 0f32,
     };
     let room = Room::new(String::from("ElectricBananaBand"), Some(stream)).start();
 

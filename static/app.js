@@ -1,3 +1,27 @@
+function secondsToTime(seconds) {
+    seconds = Number(seconds);
+    var h = Math.floor(seconds / 3600);
+    var m = Math.floor(seconds % 3600 / 60);
+    var s = Math.floor(seconds % 60);
+
+    return h.toString().padStart(2, "0") + ":" + m.toString().padStart(2, "0") + ":" + s.toString().padStart(2, "0");
+}
+
+function bufferedFromPosition(video, pos) {
+    var bufferedRanges = video.buffered;
+
+    for (var i = 0; i < bufferedRanges.length; i++) {
+        var start = video.buffered.start(i);
+        var end = video.buffered.end(i);
+
+        if (start <= pos && end >= pos) {
+            return end - pos;
+        }
+    }
+
+    return 0;
+}
+
 function setupHls(video) {
     if (Hls.isSupported()) {
         var hls = new Hls();
@@ -110,18 +134,53 @@ Controls.prototype.UpdateVolumeControl = function() {
     this.volumeSlider.style.width = Math.floor(vol * 100) + '%';
 }
 
-Participant = function(user_id, name, is_me) {
+Participant = function(userlist_table, user_id, name, is_me) {
+    this.userlist_table = userlist_table;
     this.user_id = user_id;
     this.name = name;
+
+    this.user_row = document.createElement('tr');
+    this.name_col = document.createElement('td');
+    this.time_col = document.createElement('td');
+    this.buffered_col = document.createElement('td');
+    this.state_col = document.createElement('td');
+
+    this.name_col.innerText = name;
+
+    this.user_row.appendChild(this.name_col);
+    this.user_row.appendChild(this.time_col);
+    this.user_row.appendChild(this.buffered_col);
+    this.user_row.appendChild(this.state_col);
+
+    this.userlist_table.appendChild(this.user_row);
+
+    console.log(this);
 }
 
-Room = function(video, title) {
+Participant.prototype.Update = function(update) {
+    this.time_col.innerText = secondsToTime(update.duration);
+    this.buffered_col.innerText = secondsToTime(update.buffered);
+    this.state_col.innerText = update.state;
+}
+
+Participant.prototype.Remove = function() {
+    this.user_row.remove();
+}
+
+Room = function(video, title, userlist) {
     this.video = video;
     this.title = title;
+    this.userlist = userlist;
     this.hls = setupHls(video);
     this.participants = [];
     this.blockEvents = false;
     this.inSeek = false;
+    this.self_user = new Participant(this.userlist, null, "Bob", true)
+    this.self_state = {
+        duration: 0,
+        buffered: 0,
+        state: "Pause",
+    };
 
     var host = window.location.host;
 
@@ -133,6 +192,7 @@ Room = function(video, title) {
     this.video.onpause = this.OnPaused.bind(this);
     this.video.onseeked = this.OnSeeked.bind(this);
     this.video.onseeking = this.OnSeeking.bind(this);
+    this.video.ontimeupdate = this.OnTimeUpdate.bind(this);
 }
 
 Room.prototype.RequestPlay = function() {
@@ -160,6 +220,22 @@ Room.prototype.RequestSeek = function(duration) {
 Room.prototype.OnWsOpen = function(event) {
     console.log("Connected to room websocket!");
 
+    setInterval(function() {
+        var duration = this.video.currentTime;
+        var buffered = bufferedFromPosition(this.video, duration);
+        var state = this.playing ? "Play" : "Pause";
+
+        this.self_state = {
+            duration: duration,
+            buffered: buffered,
+            state: state
+        };
+
+        this.Send({State:this.self_state});
+
+        this.self_user.Update(this.self_state);
+    }.bind(this), 1000);
+
     this.Send({Hello:{name:"bob"}});
 }
 
@@ -170,6 +246,8 @@ Room.prototype.OnWsMessage = function(event) {
 
     if (message.RoomState != null) {
         this.OnRoomState(message.RoomState);
+    } else if (message.RoomUpdate != null) { // room has updated
+        this.OnRoomUpdate(message.RoomUpdate);
     } else if (message.NewParticipant != null) { // new participant
         this.OnNewParticipant(message.NewParticipant);
     } else if (message.ByeParticipant != null) { // participant left
@@ -194,9 +272,19 @@ Room.prototype.OnRoomState = function(state) {
         this.hls.loadSource(streamUrl);
     }
 
-    for (var user in state.participants) {
-        this.AddUser(user.user_id, user.name);
-    }
+    state.participants.forEach(p => {
+        this.AddUser(p.user_id, p.name);
+    });
+}
+
+Room.prototype.OnRoomUpdate = function(update) {
+    update.participants.forEach(update => {
+        var participant = this.participants.find((p) => p.user_id == update.user_id);
+
+        if (participant != null && !participant.is_me) {
+            participant.Update(update);
+        }
+    });
 }
 
 
@@ -227,7 +315,9 @@ Room.prototype.OnSetState = function(state) {
 
 
 Room.prototype.AddUser = function(user_id, name) {
-    this.participants.push(new Participant(user_id, name));
+    console.log("Adding user "+name+"#"+user_id);
+
+    this.participants.push(new Participant(this.userlist, user_id, name));
 
     this.UpdateUserList();
 }
@@ -235,9 +325,13 @@ Room.prototype.RemoveUser = function(user_id) {
     var idx = this.participants.findIndex((p) => p.user_id == user_id);
 
     if (idx >= 0) {
-        this.participants.splice(idx);
+        var participant = this.participants.splice(idx)[0];
+        console.log("Removing user "+participant.name+"#"+user_id);
+        participant.Remove();
 
         this.UpdateUserList();
+    } else {
+        console.warn("Failed to find existing user for leaving user id #"+user_id);
     }
 }
 
@@ -253,42 +347,23 @@ Room.prototype.OnByeParticipant = function(participant) {
     this.RemoveUser(participant.user_id);
 }
 
-Room.prototype.OnPlay = function(event) {
-    /*if (this.blockEvents || this.inSeek) {
-        this.blockEvents = false;
-        console.log("Blocked play message");
-        return;
-    }
+Room.prototype.OnTimeUpdate = function(event) {
+    this.self_state.duration = video.currentTime;
+    this.self_user.Update(this.self_state);
+}
 
-    console.log("Sending play message");
-    this.Send({SetState:{state:"Play"}});*/
+Room.prototype.OnPlay = function(event) {
+    this.playing = true;
 }
 
 Room.prototype.OnPaused = function(event) {
-    /*if (this.blockEvents || this.inSeek) {
-        this.blockEvents = false;
-        console.log("Blocked pause message");
-        return;
-    }
-
-    console.log("Sending pause message");
-    this.Send({SetState:{state:"Pause"}});*/
+    this.playing = false;
 }
 
 Room.prototype.OnSeeked = function(event) {
-    /*if (this.blockEvents || this.inSeek) {
-        this.blockEvents = false;
-        this.inSeek = false;
-        console.log("Blocked seeked message");
-        return;
-    }
-    console.log("Sending seek message: " + video.currentTime);
-    this.Send({Seek:{duration:video.currentTime}});*/
 }
 
 Room.prototype.OnSeeking = function(event) {
-    //this.inSeek = true;
-    //console.log("Setting seeking to true");
 }
 
 Room.prototype.Send = function(msg) {
@@ -298,7 +373,8 @@ Room.prototype.Send = function(msg) {
 var video = document.getElementById('video-player');
 var title = document.getElementById('room-name');
 var fold = document.getElementById('video-fold');
+var userlist = document.getElementById('userlist');
 
-var room = new Room(video, title);
+var room = new Room(video, title, userlist);
 
 var controls = new Controls(video, room, fold);
