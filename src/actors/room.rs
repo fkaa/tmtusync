@@ -69,6 +69,8 @@ impl Room {
     }
 
     fn announce_state(&mut self, src: UserId, state: PlayState) {
+        self.room_state = state;
+
         let message = ToSessionMessage::SetState {
             state,
         };
