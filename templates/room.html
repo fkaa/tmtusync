@@ -1,76 +1,115 @@
 {% extends "base.html" %}
 
-{% block title %}{{ name }} - tmtusync{% endblock %}
+{% block title %}{{ meta.name }} - tmtusync{% endblock %}
 
 {% block head %}
-    <link href="/static/style.css" rel="stylesheet">
-    <link href="/static/fontawesome.min.css" rel="stylesheet">
+<link href="/static/style.css" rel="stylesheet">
+<link href="/static/sprites.css" rel="stylesheet">
+<link href="/static/plyr.css" rel="stylesheet">
+<link href="/static/bootstrap-dark.min.css" rel="stylesheet">
+<link href="/static/fontawesome.min.css" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
 
 <div class="test">
 
-<div class="video-wrapper">
+  <div class="video-wrapper">
     <video id="video-player" class="video">
-        Not supported!
+      Not supported!
     </video>
 
-    <div class="video-header">
-        <span id="room-name" class="video-title"></span>
+    <!-- Expand button -->
+    <button id="expand" class="toggle-fold" type="button" data-state="window">
+      <i class="fas fa-angle-double-left fa-3x window-icon"></i>
+      <i class="fas fa-angle-double-right fa-3x fullscreen-icon"></i>
+    </button>
+  </div>
+
+  <div id="video-fold" class="fold">
+
+    <div class="room-info">
+      <h3 class="userlist-wrapper">{{ meta.name }}</h3>
+      <div class="userlist-wrapper">
+        <table class="table table-borderless">
+          <tbody>
+            <tr>
+              <td class="text-muted">Playing:</td>
+              <td>
+                {% match meta.stream.imdb %}
+                {% when Some with (val) %}
+                <a href="{{ val }}">{{ meta.stream.title }}</a> <span class="badge badge-imdb">IMDB</span>
+                {% when None %}
+                {{ meta.stream.title }}
+                {% endmatch %}
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Length:</td>
+              <td>{{ meta.stream.duration }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <div id="video-controls" class="controls" data-state="hidden">
-        <!-- Play/Pause button -->
-        <button id="playpause" type="button" data-state="pause">
-            <i class="fas fa-play fa-3x play-icon"></i>
-            <i class="fas fa-pause fa-3x pause-icon"></i>
-        </button>
-
-        <!-- Progress bar -->
-        <div id="progress" class="progress">
-            <span id="progress-bar" class="progress-content"></span>
-        </div>
-
-        <!-- Settings button -->
-        <button id="settings" type="button">
-            <i class="fas fa-cog fa-3x"></i>
-        </button>
-
-        <!-- Mute volume button -->
-        <button id="mute" type="button" data-state="mute">
-            <i class="fas fa-volume-up fa-3x volume-icon"></i>
-            <i class="fas fa-volume-mute fa-3x mute-icon"></i>
-        </button>
-
-        <!-- Volume slider -->
-        <div id="volume-container" class="progress">
-            <span id="volume-slider" class="progress-content"></span>
-        </div>
-
-        <!-- Expand button -->
-        <button id="expand" type="button" data-state="window">
-            <i class="fas fa-expand-arrows-alt fa-3x fullscreen-icon"></i>
-            <i class="fas fa-compress-arrows-alt fa-3x window-icon"></i>
-        </button>
-
+    <div class="room-participant-list">
+      <h3 class="userlist-wrapper">Participants</h3>
+      <div class="userlist-wrapper">
+        <table id="userlist" class="table align-middle">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Name</th>
+              <th>Time</th>
+              <th>Cache</th>
+              <th></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+      </div>
     </div>
+
+    <h3 class="userlist-wrapper">Log</h3>
+    <div id="logcontainer" class="room-log">
+      <table id="loglist" class="userlist-wrapper table align-middle">
+        <thead>
+          <tr>
+            <th></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
-<div id="video-fold" class="fold">
-    <table id="userlist">
-        <tr>
-            <th>Name</th>
-            <th>Time</th>
-            <th>Buffered</th>
-            <th>State</th>
-        </tr>
-    </table>
-</div>
 
 </div>
 
+<script>
+  USERNAME = "{{ nickname }}";
+  AVATAR = {{ avatar }};
+  BADGES = [
+    {% for badge in badges %}
+      {{ badge }},
+    {% endfor %}
+  ];
+  ROOM_CODE = "{{ code }}";
+  BADGE_DATA = [
+    {% for badge in badge_data %}
+      { name:"{{ badge.name }}",tooltip:"{{ badge.tooltip }}" },
+    {% endfor %}
+  ];
+</script>
 <script src="../static/hls.js"></script>
+<script src="../static/plyr.min.js"></script>
+<script src="../static/bootstrap.bundle.min.js"></script>
 <script src="../static/app.js"></script>
 
 {% endblock %}

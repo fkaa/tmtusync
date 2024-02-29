@@ -1,0 +1,79 @@
+<html>
+  <head>
+    <title>tmtusync</title>
+    <meta charset="utf-8">
+
+    <meta name="color-scheme" content="light dark">
+
+    <link rel="shortcut icon" type="image/png" href="/static/favicon.png">
+    <link href="static/style.css" rel="stylesheet">
+    <link href="static/sprites.css" rel="stylesheet">
+    <link href="static/bootstrap-dark.min.css" rel="stylesheet">
+
+    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#eeeeee" media="(prefers-color-scheme: dark)">
+  </head>
+
+  <body>
+    <table class="page-stretch">
+      <tr>
+        <td class="centering">
+          <div class="login-box shadow-lg p-3 mb-5 bg-body rounded">
+            <header>
+              <h1 class="tmtu-logo">tmtu<span class="sync-emphasize">sync</span></h1>
+            </header>
+
+            <!-- Nickname -->
+            <form class="room-form" action="/" method="post">
+              <div class="form-floating mb-3">
+                <input class="form-control form-control-lg" type="text" name="nickname" id="username" placeholder="Nickname">
+                <label class="form-label form-label-lg" for="nickname">Nickname</label>
+              </div>
+
+              <!-- Avatar -->
+              <div class="mb-3">
+                <label class="form-label form-label-lg">Avatar</label>
+                <div class="btn-group btn-group-lg avatar-group" role="group">
+                  <input type="radio" class="btn-check" name="avatar" id="b1" value="0" autocomplete="off" checked>
+                  <label class="btn btn-outline-primary" for="b1"><i class="sprite sprite-user_suit"></i></label>
+
+                  <input type="radio" class="btn-check" name="avatar" id="b2" value="1" autocomplete="off">
+                  <label class="btn btn-outline-primary" for="b2"><i class="sprite sprite-user_green"></i></label>
+
+                  <input type="radio" class="btn-check" name="avatar" id="b3" value="3" autocomplete="off">
+                  <label class="btn btn-outline-primary" for="b3"><i class="sprite sprite-user_orange"></i></label>
+
+                  <input type="radio" class="btn-check" name="avatar" id="b4" value="2" autocomplete="off">
+                  <label class="btn btn-outline-primary" for="b4"><i class="sprite sprite-user_red"></i></label>
+
+                  <input type="radio" class="btn-check" name="avatar" id="b5" value="18" autocomplete="off">
+                  <label class="btn btn-outline-primary" for="b5"><i class="sprite sprite-user_female"></i></label>
+                </div>
+                <div class="form-text">
+                  How you will appear to others in the room.
+                </div>
+              </div>
+
+              <!-- Room code -->
+              <div class="form-floating mb-3">
+                <input class="form-control form-control-lg" type="text" name="room" id="password" placeholder="Room code">
+                <label class="form-label form-label-lg" for="room">Room code</label>
+                <div class="form-text">
+                  Ask a friend for a room code.
+                </div>
+              </div>
+
+              <div id="retry" class="hide alert alert-danger" role="alert">
+                Could not find a room with that code
+              </div>
+
+              <div class="d-grid">
+                <button type="submit" class="btn btn-lg btn-primary">Join room</button>
+              </div>
+            </form>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

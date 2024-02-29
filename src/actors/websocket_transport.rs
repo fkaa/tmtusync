@@ -4,41 +4,69 @@ use actix_web_actors::ws;
 use stop_token::StopSource;
 
 use log::*;
-use serde::{Deserialize, Serialize};
 
 use crate::actors::{GetUserId, Room};
 
-use std::time::Duration;
+use chrono::{DateTime, Utc, TimeZone};
+
+use std::time::{Duration, Instant};
+
+use crate::protocol::{ServerTime, ClientTime, UserId,UserMessage,ClientMessage,ToSessionMessage};
 
 pub struct WebsocketTransport {
     room: Addr<Room>,
     user_id: UserId,
+    cookie: String,
     stop_source: StopSource,
 }
 
 impl WebsocketTransport {
-    pub async fn new(room: Addr<Room>) -> Self {
-        let user_id = room.send(GetUserId).await.unwrap().unwrap();
-
+    pub async fn new(cookie: String, user_id: UserId, room: Addr<Room>) -> Self {
         let stop_source = StopSource::new();
 
         Self {
             room,
             user_id,
+            cookie,
             stop_source,
         }
     }
 
     fn handle_message(
         &mut self,
-        message: FromSessionMessage,
+        server_time: ServerTime,
+        message: UserMessage,
         ctx: &mut ws::WebsocketContext<Self>,
     ) {
         self.room.do_send(ClientMessage {
             from: self.user_id,
+            cookie: self.cookie.clone(),
             message: message,
-            addr: ctx.address()
+            addr: ctx.address(),
+            server_time,
         });
+    }
+
+    fn handle_websocket_text(&mut self, txt: String, ctx: &mut ws::WebsocketContext<Self>) {
+        trace!("{:?} <- {:?}", self.user_id, txt);
+        let now = Utc::now();
+
+        match serde_json::from_str::<UserMessage>(&txt) {
+            Ok(message) => {
+                trace!("{:?} <- {:?}", self.user_id, message);
+
+                self.handle_message(ServerTime(now), message, ctx);
+            }
+            Err(e) => {
+                warn!("Error parsing message from participant {:?}: {:?}", self.user_id, e);
+
+                let err_message =
+                    serde_json::to_string(&ToSessionMessage::Error(format!("{:?}", e)))
+                        .unwrap();
+
+                ctx.text(err_message);
+            }
+        }
     }
 }
 
@@ -48,8 +76,10 @@ impl Actor for WebsocketTransport {
     fn stopped(&mut self, ctx: &mut Self::Context) {
         self.room.do_send(ClientMessage {
             from: self.user_id,
-            message: FromSessionMessage::Goodbye,
-            addr: ctx.address()
+            cookie: self.cookie.clone(),
+            message: UserMessage::Goodbye,
+            addr: ctx.address(),
+            server_time: ServerTime(Utc::now()),
         });
     }
 }
@@ -70,24 +100,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebsocketTranspor
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         match msg {
             Ok(ws::Message::Text(txt)) => {
-                trace!("{:?} <- {:?}", self.user_id, txt);
-
-                match serde_json::from_str::<FromSessionMessage>(&txt) {
-                    Ok(message) => {
-                        debug!("{:?} <- {:?}", self.user_id, message);
-
-                        self.handle_message(message, ctx);
-                    }
-                    Err(e) => {
-                        warn!("Error parsing message from participant {:?}: {:?}", self.user_id, e);
-
-                        let err_message =
-                            serde_json::to_string(&ToSessionMessage::Error(format!("{:?}", e)))
-                                .unwrap();
-
-                        ctx.text(err_message);
-                    }
-                }
+                self.handle_websocket_text(txt, ctx);
             },
             Ok(ws::Message::Close(reason)) => {
                 ctx.close(reason);
@@ -96,137 +109,4 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebsocketTranspor
             _ => {}
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq)]
-pub struct UserId(pub u32);
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ParticipantInfo {
-    pub user_id: UserId,
-    pub name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ParticipantUpdate {
-    pub user_id: UserId,
-    pub duration: f32,
-    pub buffered: f32,
-    pub state: PlayState,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct NewParticipant {
-    user_id: UserId,
-    name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ChatMessage {
-    from: UserId,
-    msg: String,
-}
-
-/// Info about a media stream, containing a sortable quality number and the file name of the HLS
-/// playlist.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Stream {
-    pub quality: u32,
-    pub playlist: String,
-}
-
-/// Info about a media stream, containing the directory slug for the data and a list of all
-/// available HLS playlists.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct StreamInfo {
-    pub slug: String,
-    pub name: String,
-    pub streams: Vec<Stream>,
-    pub duration: f32,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum ToSessionMessage {
-    /// Initial payload describing how the room looks like
-    RoomState {
-        participants: Vec<ParticipantInfo>,
-        current_stream: Option<StreamInfo>,
-    },
-
-    RoomUpdate {
-        participants: Vec<ParticipantUpdate>,
-    },
-
-    NewParticipant {
-        user_id: UserId,
-        name: String,
-    },
-    ByeParticipant {
-        user_id: UserId,
-    },
-
-    NewStream(StreamInfo),
-
-    SetState {
-        state: PlayState
-    },
-    DoSeek {
-        duration: f32,
-    },
-
-    ChatMessage(ChatMessage),
-
-    Error(String),
-}
-
-impl Message for ToSessionMessage {
-    type Result = anyhow::Result<()>;
-}
-
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
-pub enum PlayState {
-    Play,
-    Pause,
-}
-
-// TODO: error
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SessionState {
-    position: Duration,
-    buffered: Duration,
-    player_state: PlayState,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SessionHello {
-    name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum FromSessionMessage {
-    Hello { name: String },
-    Goodbye,
-    State {
-        duration: f32,
-        buffered: f32,
-        state: PlayState,
-    },
-    Buffering(Duration),
-    Seek {
-        duration: f32,
-    },
-    SetState {
-        state: PlayState
-    },
-    Message(String),
-}
-
-pub struct ClientMessage {
-    pub from: UserId,
-    pub addr: Addr<WebsocketTransport>,
-    pub message: FromSessionMessage,
-}
-
-impl Message for ClientMessage {
-    type Result = anyhow::Result<()>;
 }

@@ -1,0 +1,66 @@
+<html>
+<head>
+  <title>tmtusync</title>
+  <meta charset="utf-8">
+
+  <link rel="icon" type="image/ico" href="favicon.ico">
+  <link href="static/style.css" rel="stylesheet">
+  <link href="static/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+        background-image: url("static/customer-support.png");
+        background-position: right bottom;
+        background-repeat: no-repeat;
+        background-size: 35%;
+    }
+  </style>
+</head>
+
+<body>
+  <img>
+  <table class="page-stretch">
+    <tr>
+      <td class="centering">
+        <div class="login-box shadow-lg p-3 mb-5 bg-body rounded">
+          <header>
+            <h1 class="tmtu-logo">tmtu<span class="sync-emphasize">sync</span></h1>
+          </header>
+
+          <form class="room-form" method="post">
+            <div class="form-floating mb-3">
+              <input class="form-control form-control-lg" type="text" name="room" id="name" placeholder="Room name">
+              <label class="form-label form-label-lg" for="room">Room name</label>
+              <div class="form-text">
+                This is the name of the room, not the room code.
+              </div>
+            </div>
+
+            <div class="form-floating mb-3">
+              <input class="form-control form-control-lg" type="text" name="nickname" id="username" placeholder="Nickname">
+              <label class="form-label form-label-lg" for="nickname">Nickname</label>
+            </div>
+
+            <div class="form-floating mb-3">
+              <select class="form-select" id="media-file">
+                <option selected>Select a file</option>
+
+                {% for file in files %}
+                  <option value="{{ loop.index }}">{{ file }}</option>
+                {% endfor %}
+              </select>
+              <label for="media-file">Media file</label>
+              <div class="form-text">
+                This is the media file that will be started in the room.
+              </div>
+            </div>
+
+            <div class="d-grid">
+              <button type="button" class="btn btn-lg btn-primary">Create room</button>
+            </div>
+          </form>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

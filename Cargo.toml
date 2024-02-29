@@ -4,10 +4,8 @@ version = "0.1.0"
 authors = ["Felix Kaaman <tmtu@tmtu.ee>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "0.2", features = ["full"] }
 futures = "*"
 futures-util = "*"
 async-channel = "*"
@@ -27,10 +25,12 @@ log = "*"
 byteorder = "*"
 serde = "*"
 serde_json = "*"
+# ac-ffmpeg = "0.15"
 
-actix-web-actors = "*"
+actix-web-actors = "3"
 actix-web = "3"
-actix-files = "*"
-actix = "*"
+actix-files = "0.5"
+actix-identity = "0.3"
+actix = "0.10"
 actix-rt = "1.1"
 

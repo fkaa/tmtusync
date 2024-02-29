@@ -1,0 +1,11 @@
+* double people desync
+* sync problems
+  * speed up or down to catch up
+  * seeking sometimes doesnt work?
+* time problems
+  * negative times?
+* no autocomplete on room codes
+* pointer on video controls
+* remove external requests from video player
+* actual metadata from file?
+* remove start and end of tooltips
